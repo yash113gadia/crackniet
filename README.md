@@ -6,8 +6,14 @@ AI-powered exam assistant Chrome extension for Iamneo/Examly, HackerRank, and NP
 
 ## ⚡ One-Line Install
 
+**Mac / Linux:**
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/yash113gadia/crackniet/main/install.sh)
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/yash113gadia/crackniet/main/install.ps1 | iex
 ```
 
 This clones the extension and opens Chrome so you can load it.
