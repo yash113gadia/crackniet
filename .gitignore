@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+.env
+node_modules/
+.context.md
+CrackNIET_Shortcuts.docx
+.bench*.py
+.full_bench.py
