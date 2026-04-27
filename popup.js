@@ -75,30 +75,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (quickActivateBtn) {
         quickActivateBtn.addEventListener('click', function() {
+            // Immediate visual feedback
+            quickActivateBtn.textContent = '⏳ Saving...';
+            quickActivateBtn.style.opacity = '0.6';
+
             var key = apiKeyInput ? apiKeyInput.value.trim() : '';
             if (!key) {
+                quickActivateBtn.textContent = '🚀 Activate';
+                quickActivateBtn.style.opacity = '1';
                 showResult('Please enter your OpenRouter API key', false);
                 return;
             }
 
             var model = quickModelSelect ? quickModelSelect.value : 'openai/gpt-oss-120b:free';
 
-            chrome.storage.local.set({
-                useCustomAPI: true,
-                aiProvider: 'openrouter',
-                customAPIKey: key,
-                customModelName: model,
-                customEndpoint: ''
-            }, function() {
-                if (chrome.runtime.lastError) {
-                    showResult('Failed to save: ' + chrome.runtime.lastError.message, false);
-                    return;
-                }
-                updateStatus(true);
-                var modelShort = model.split('/').pop().replace(':free', '');
-                showResult('✓ Activated! Using ' + modelShort, true);
-                clearChatHistoryOnProviderChange();
-            });
+            try {
+                chrome.storage.local.set({
+                    useCustomAPI: true,
+                    aiProvider: 'openrouter',
+                    customAPIKey: key,
+                    customModelName: model,
+                    customEndpoint: ''
+                }, function() {
+                    quickActivateBtn.textContent = '🚀 Activate';
+                    quickActivateBtn.style.opacity = '1';
+
+                    if (chrome.runtime.lastError) {
+                        showResult('Failed to save: ' + chrome.runtime.lastError.message, false);
+                        return;
+                    }
+                    updateStatus(true);
+                    var modelShort = model.split('/').pop().replace(':free', '');
+                    showResult('✓ Activated! Using ' + modelShort, true);
+                    clearChatHistoryOnProviderChange();
+                });
+            } catch (e) {
+                quickActivateBtn.textContent = '🚀 Activate';
+                quickActivateBtn.style.opacity = '1';
+                showResult('Error: ' + e.message, false);
+            }
         });
     }
 
@@ -134,27 +149,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             var model = quickModelSelect ? quickModelSelect.value : 'openai/gpt-oss-120b:free';
-            testAPIConfigButton.textContent = '...';
+            testAPIConfigButton.textContent = '⏳';
             testAPIConfigButton.disabled = true;
 
-            chrome.runtime.sendMessage({
-                action: 'testCustomAPI',
-                config: {
-                    aiProvider: 'openrouter',
-                    customEndpoint: '',
-                    apiKey: key,
-                    modelName: model
-                }
-            }, function(response) {
+            // Test directly via fetch — bypasses worker message channel issues
+            fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + key,
+                    'HTTP-Referer': 'https://crackniet.app',
+                    'X-Title': 'CrackNIET'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: 'user', content: 'Reply with only: OK' }],
+                    max_tokens: 10
+                })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
                 testAPIConfigButton.textContent = 'Test';
                 testAPIConfigButton.disabled = false;
 
-                if (chrome.runtime.lastError) {
-                    showResult('✗ ' + chrome.runtime.lastError.message, false);
-                    return;
-                }
-
-                if (response && response.success) {
+                if (data.choices && data.choices[0]) {
                     showResult('✓ Connection successful!', true);
                     updateStatus(true);
                     // Auto-save on successful test
@@ -165,9 +183,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         customModelName: model,
                         customEndpoint: ''
                     });
+                } else if (data.error) {
+                    showResult('✗ ' + (data.error.message || JSON.stringify(data.error)), false);
                 } else {
-                    showResult('✗ ' + (response ? response.error : 'No response from worker'), false);
+                    showResult('✗ Unexpected response', false);
                 }
+            })
+            .catch(function(err) {
+                testAPIConfigButton.textContent = 'Test';
+                testAPIConfigButton.disabled = false;
+                showResult('✗ Network error: ' + err.message, false);
             });
         });
     }
@@ -224,25 +249,45 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                // Test the connection
-                chrome.runtime.sendMessage({
-                    action: 'testCustomAPI',
-                    config: {
-                        aiProvider: provider,
-                        customEndpoint: endpoint,
-                        apiKey: key,
-                        modelName: model
-                    }
-                }, function(response) {
+                // Build test URL based on provider
+                var testUrl, testHeaders, testBody;
+                switch (provider) {
+                    case 'openrouter':
+                        testUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                        testHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'HTTP-Referer': 'https://crackniet.app' };
+                        testBody = { model: model || 'openai/gpt-oss-120b:free', messages: [{ role: 'user', content: 'Reply OK' }], max_tokens: 5 };
+                        break;
+                    case 'openai':
+                        testUrl = 'https://api.openai.com/v1/chat/completions';
+                        testHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key };
+                        testBody = { model: model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'Reply OK' }], max_tokens: 5 };
+                        break;
+                    default:
+                        // For other providers, just save without testing
+                        advancedSaveBtn.textContent = 'Save & Test';
+                        advancedSaveBtn.disabled = false;
+                        showError('✓ Saved! (test not available for this provider)', 3000);
+                        updateStatus(true);
+                        clearChatHistoryOnProviderChange();
+                        return;
+                }
+
+                fetch(testUrl, { method: 'POST', headers: testHeaders, body: JSON.stringify(testBody) })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
                     advancedSaveBtn.textContent = 'Save & Test';
                     advancedSaveBtn.disabled = false;
-
-                    if (response && response.success) {
+                    if (data.choices || data.content) {
                         showError('✓ Saved & connected!', 3000);
                         updateStatus(true);
                     } else {
-                        showError('Saved, but test failed: ' + (response ? response.error : 'Unknown'), 5000);
+                        showError('Saved, but test failed: ' + (data.error ? data.error.message : 'Unknown'), 5000);
                     }
+                })
+                .catch(function(err) {
+                    advancedSaveBtn.textContent = 'Save & Test';
+                    advancedSaveBtn.disabled = false;
+                    showError('Saved, but test failed: ' + err.message, 5000);
                 });
 
                 clearChatHistoryOnProviderChange();
