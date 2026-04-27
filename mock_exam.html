@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProctorShield Mock Exam - DBMS & DSA Final</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f1117;
+            color: #e0e0e0;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+        }
+
+        /* Header bar */
+        .exam-header {
+            background: linear-gradient(135deg, #1a1d29, #252836);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ef4444;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .exam-title { font-size: 1.1rem; font-weight: 700; color: #fff; }
+        .exam-timer {
+            background: #ef4444;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .proctor-badge {
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            color: #fca5a5;
+        }
+        .proctor-dot {
+            width: 8px; height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* Violation overlay */
+        #violationOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+        #violationOverlay.active { display: flex; }
+        .violation-icon { font-size: 4rem; }
+        .violation-title { font-size: 1.5rem; font-weight: 700; color: #ef4444; }
+        .violation-msg { color: #999; font-size: 0.9rem; max-width: 400px; text-align: center; }
+        .violation-count { color: #fca5a5; font-size: 0.8rem; margin-top: 8px; }
+        .dismiss-btn {
+            margin-top: 16px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Questions container */
+        .exam-body { max-width: 900px; margin: 0 auto; padding: 24px; }
+        .question-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .q-nav-btn {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #1a1d29;
+            color: #999;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        .q-nav-btn.active { background: #ef4444; color: white; border-color: #ef4444; }
+        .q-nav-btn.answered { background: #22c55e; color: white; border-color: #22c55e; }
+
+        .question-card {
+            display: none;
+            background: #1a1d29;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #2a2d3a;
+        }
+        .question-card.active { display: block; }
+        .q-number { font-size: 0.75rem; color: #ef4444; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .q-text { font-size: 1rem; color: #fff; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
+        .q-options { display: flex; flex-direction: column; gap: 10px; }
+        .q-option {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #252836;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .q-option:hover { border-color: #ef4444; background: rgba(239,68,68,0.05); }
+        .q-option.selected { border-color: #22c55e; background: rgba(34,197,94,0.1); }
+        .q-option input[type="radio"] { accent-color: #22c55e; }
+        .q-option-label { font-size: 0.9rem; }
+
+        /* Code editor area */
+        .code-area {
+            width: 100%;
+            min-height: 150px;
+            background: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+
+        /* Submit */
+        .submit-bar {
+            display: flex; justify-content: space-between; margin-top: 24px;
+        }
+        .nav-btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #252836;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { background: #333; }
+        .nav-btn.submit { background: #ef4444; border-color: #ef4444; }
+        .nav-btn.submit:hover { background: #dc2626; }
+
+        /* Proctoring status bar */
+        .proctor-status {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1a1d29;
+            border-top: 1px solid #2a2d3a;
+            padding: 8px 24px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #666;
+        }
+        .status-item { display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .status-dot.green { background: #22c55e; }
+        .status-dot.red { background: #ef4444; }
+
+        /* Anti-cheat console warnings */
+        .violations-log {
+            position: fixed;
+            top: 60px;
+            right: 16px;
+            width: 280px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(26,29,41,0.95);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.7rem;
+            z-index: 50;
+            display: none;
+        }
+        .violations-log.visible { display: block; }
+        .v-entry { padding: 4px 0; border-bottom: 1px solid #222; color: #fca5a5; }
+        .v-entry:last-child { border: none; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="exam-header">
+        <div class="exam-title">📝 ProctorShield Mock Exam — DBMS & DSA</div>
+        <div class="exam-timer" id="timer">29:59</div>
+        <div class="proctor-badge">
+            <div class="proctor-dot"></div>
+            Proctoring Active
+        </div>
+    </div>
+
+    <!-- Violation Overlay -->
+    <div id="violationOverlay">
+        <div class="violation-icon">🚨</div>
+        <div class="violation-title">Violation Detected!</div>
+        <div class="violation-msg" id="violationMsg">An unauthorized action was detected.</div>
+        <div class="violation-count" id="violationCount">Violations: 0/3 — 3 violations = auto-submit</div>
+        <button class="dismiss-btn" onclick="dismissViolation()">Continue Exam</button>
+    </div>
+
+    <!-- Exam Body -->
+    <div class="exam-body">
+        <!-- Question Navigation -->
+        <div class="question-nav" id="questionNav"></div>
+
+        <!-- Questions will be injected here -->
+        <div id="questionsContainer"></div>
+
+        <!-- Navigation -->
+        <div class="submit-bar">
+            <button class="nav-btn" id="prevBtn" onclick="navigateQ(-1)">← Previous</button>
+            <button class="nav-btn" id="nextBtn" onclick="navigateQ(1)">Next →</button>
+            <button class="nav-btn submit" onclick="submitExam()">Submit Exam</button>
+        </div>
+    </div>
+
+    <!-- Proctor Status Bar -->
+    <div class="proctor-status">
+        <div class="status-item"><div class="status-dot green"></div> Copy/Paste: Blocked</div>
+        <div class="status-item"><div class="status-dot green"></div> Right-Click: Blocked</div>
+        <div class="status-item"><div class="status-dot green"></div> Tab Switch: Monitored</div>
+        <div class="status-item"><div class="status-dot green"></div> DevTools: Monitored</div>
+        <div class="status-item" id="violationDisplay"><div class="status-dot red"></div> Violations: 0</div>
+    </div>
+
+    <!-- Violations Log -->
+    <div class="violations-log" id="violationsLog">
+        <div style="font-weight:700; margin-bottom:8px; color:#ef4444;">📋 Violation Log</div>
+    </div>
+
+    <script>
+    // ============================================================
+    // QUESTIONS DATABASE
+    // ============================================================
+    const QUESTIONS = [
+        {
+            id: 1, type: 'mcq', subject: 'DBMS',
+            text: 'Which of the following is NOT a property of transactions in a database management system?',
+            options: ['Atomicity', 'Consistency', 'Scalability', 'Durability'],
+            correct: 2 // Scalability
+        },
+        {
+            id: 2, type: 'mcq', subject: 'DBMS',
+            text: 'In a B+ tree of order 4 (maximum 4 children per node), what is the maximum number of keys a non-root internal node can hold?',
+            options: ['2', '3', '4', '5'],
+            correct: 1 // 3
+        },
+        {
+            id: 3, type: 'mcq', subject: 'DBMS',
+            text: 'Given a relation R(A, B, C, D) with functional dependencies:\nA → B\nB → C\nC → D\n\nWhat is the highest normal form of R?',
+            options: ['1NF', '2NF', '3NF', 'BCNF'],
+            correct: 1 // 2NF (since A is the key, B→C is transitive, so not 3NF)
+        },
+        {
+            id: 4, type: 'mcq', subject: 'DBMS',
+            text: 'Which SQL query correctly finds departments with more than 5 employees earning above 50000?\n\nA) SELECT dept FROM emp WHERE salary > 50000 GROUP BY dept HAVING COUNT(*) > 5\nB) SELECT dept FROM emp GROUP BY dept HAVING COUNT(*) > 5 WHERE salary > 50000\nC) SELECT dept FROM emp HAVING COUNT(*) > 5 WHERE salary > 50000 GROUP BY dept\nD) SELECT dept, COUNT(*) FROM emp WHERE salary > 50000 GROUP BY dept HAVING COUNT(*) > 5',
+            options: [
+                'Option A',
+                'Option B',
+                'Option C',
+                'Option D'
+            ],
+            correct: 3 // D is most correct (includes COUNT in SELECT)
+        },
+        {
+            id: 5, type: 'mcq', subject: 'DBMS',
+            text: 'Two-Phase Locking protocol ensures which of the following?',
+            options: [
+                'Deadlock freedom',
+                'Starvation freedom',
+                'Conflict serializability',
+                'Cascadeless schedules'
+            ],
+            correct: 2 // Conflict serializability
+        },
+        {
+            id: 6, type: 'mcq', subject: 'DSA',
+            text: 'What is the time complexity of finding the diameter of a binary tree using DFS?',
+            options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)'],
+            correct: 0 // O(n)
+        },
+        {
+            id: 7, type: 'mcq', subject: 'DSA',
+            text: 'Which data structure is most efficient for implementing LRU (Least Recently Used) cache with O(1) get and put operations?',
+            options: [
+                'Array + Binary Search',
+                'HashMap + Doubly Linked List',
+                'Min Heap + HashMap',
+                'Stack + Queue'
+            ],
+            correct: 1 // HashMap + DLL
+        },
+        {
+            id: 8, type: 'mcq', subject: 'DSA',
+            text: 'In a graph with V vertices and E edges, what is the time complexity of Kruskal\'s algorithm when using union-find with path compression and union by rank?',
+            options: ['O(V²)', 'O(E log E)', 'O(E log V)', 'O(V + E)'],
+            correct: 1 // O(E log E) ≈ O(E log V)
+        },
+        {
+            id: 9, type: 'mcq', subject: 'DSA',
+            text: 'What is the minimum number of nodes in an AVL tree of height 5?',
+            options: ['12', '20', '33', '15'],
+            correct: 1 // N(h) = N(h-1) + N(h-2) + 1: N(0)=1, N(1)=2, N(2)=4, N(3)=7, N(4)=12, N(5)=20
+        },
+        {
+            id: 10, type: 'code', subject: 'DSA',
+            text: 'Write a function in Python to detect if a directed graph contains a cycle using DFS.\n\nFunction signature: def has_cycle(graph: dict) -> bool\n\nThe graph is represented as an adjacency list (dictionary).\n\nExample:\n  graph = {0: [1], 1: [2], 2: [0]} → returns True\n  graph = {0: [1], 1: [2], 2: []} → returns False',
+        }
+    ];
+
+    // ============================================================
+    // EXAM STATE
+    // ============================================================
+    let currentQ = 0;
+    let answers = {};
+    let violations = 0;
+    let timeLeft = 30 * 60; // 30 minutes
+
+    // ============================================================
+    // PROCTORING: ANTI-CHEAT MEASURES
+    // ============================================================
+
+    // 1. Block copy/paste
+    document.addEventListener('copy', (e) => { e.preventDefault(); logViolation('Copy attempt blocked'); });
+    document.addEventListener('paste', (e) => { e.preventDefault(); logViolation('Paste attempt blocked'); });
+    document.addEventListener('cut', (e) => { e.preventDefault(); logViolation('Cut attempt blocked'); });
+
+    // 2. Block right-click
+    document.addEventListener('contextmenu', (e) => { e.preventDefault(); logViolation('Right-click blocked'); });
+
+    // 3. Block keyboard shortcuts (Ctrl+C, Ctrl+V, Ctrl+A, Ctrl+U, F12)
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && ['c','v','a','u','s','p'].includes(e.key.toLowerCase())) {
+            e.preventDefault();
+            logViolation(`Keyboard shortcut blocked: Ctrl+${e.key.toUpperCase()}`);
+        }
+        if (e.key === 'F12') {
+            e.preventDefault();
+            logViolation('F12 (DevTools) blocked');
+        }
+        if (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase())) {
+            e.preventDefault();
+            logViolation('DevTools shortcut blocked');
+        }
+    });
+
+    // 4. Tab visibility change detection
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            logViolation('Tab switch detected — you left the exam window');
+            showViolation('You switched away from the exam tab. This has been recorded.');
+        }
+    });
+
+    // 5. Window blur detection
+    window.addEventListener('blur', () => {
+        logViolation('Window focus lost');
+    });
+
+    // 6. Block drag
+    document.addEventListener('dragstart', (e) => { e.preventDefault(); });
+
+    // 7. Print block
+    window.addEventListener('beforeprint', (e) => { e.preventDefault(); logViolation('Print attempt blocked'); });
+
+    // 8. Detect window resize (possible DevTools dock)
+    let lastWidth = window.outerWidth;
+    setInterval(() => {
+        if (Math.abs(window.outerWidth - window.innerWidth) > 200) {
+            logViolation('Possible DevTools detected (window size mismatch)');
+        }
+    }, 3000);
+
+    // ============================================================
+    // VIOLATION HANDLING
+    // ============================================================
+    function logViolation(msg) {
+        violations++;
+        const log = document.getElementById('violationsLog');
+        const entry = document.createElement('div');
+        entry.className = 'v-entry';
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        log.appendChild(entry);
+        log.classList.add('visible');
+
+        document.getElementById('violationDisplay').innerHTML = 
+            `<div class="status-dot red"></div> Violations: ${violations}`;
+
+        if (violations >= 3) {
+            showViolation('Maximum violations reached. Exam will be auto-submitted.');
+        }
+
+        // Auto-hide log after 5s
+        setTimeout(() => { log.classList.remove('visible'); }, 5000);
+    }
+
+    function showViolation(msg) {
+        document.getElementById('violationMsg').textContent = msg;
+        document.getElementById('violationCount').textContent = `Violations: ${violations}/3 — 3 violations = auto-submit`;
+        document.getElementById('violationOverlay').classList.add('active');
+    }
+
+    function dismissViolation() {
+        document.getElementById('violationOverlay').classList.remove('active');
+        if (violations >= 3) {
+            submitExam();
+        }
+    }
+
+    // ============================================================
+    // TIMER
+    // ============================================================
+    function updateTimer() {
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        document.getElementById('timer').textContent = 
+            `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+        if (timeLeft <= 0) { submitExam(); return; }
+        timeLeft--;
+    }
+    setInterval(updateTimer, 1000);
+
+    // ============================================================
+    // RENDER QUESTIONS
+    // ============================================================
+    function renderQuestions() {
+        const nav = document.getElementById('questionNav');
+        const container = document.getElementById('questionsContainer');
+
+        QUESTIONS.forEach((q, i) => {
+            // Nav button
+            const btn = document.createElement('button');
+            btn.className = 'q-nav-btn' + (i === 0 ? ' active' : '');
+            btn.textContent = i + 1;
+            btn.onclick = () => goToQuestion(i);
+            nav.appendChild(btn);
+
+            // Question card
+            const card = document.createElement('div');
+            card.className = 'question-card' + (i === 0 ? ' active' : '');
+            card.id = `q-${i}`;
+
+            let html = `<div class="q-number">${q.subject} — Question ${i + 1} of ${QUESTIONS.length}</div>`;
+            html += `<div class="q-text">${q.text}</div>`;
+
+            if (q.type === 'mcq') {
+                html += '<div class="q-options">';
+                q.options.forEach((opt, j) => {
+                    html += `
+                        <label class="q-option" id="opt-${i}-${j}" onclick="selectOption(${i}, ${j})">
+                            <input type="radio" name="q${i}" value="${j}">
+                            <span class="q-option-label">${String.fromCharCode(65 + j)}. ${opt}</span>
+                        </label>`;
+                });
+                html += '</div>';
+            } else if (q.type === 'code') {
+                html += `<textarea class="code-area" id="code-${i}" placeholder="Write your code here..." 
+                    onpaste="event.preventDefault(); logViolation('Paste in code editor blocked');"
+                    oninput="answers[${i}] = this.value; updateNav();"></textarea>`;
+            }
+
+            card.innerHTML = html;
+            container.appendChild(card);
+        });
+    }
+
+    function selectOption(qIdx, optIdx) {
+        answers[qIdx] = optIdx;
+        // Clear all selections for this question
+        QUESTIONS[qIdx].options.forEach((_, j) => {
+            document.getElementById(`opt-${qIdx}-${j}`).classList.remove('selected');
+        });
+        document.getElementById(`opt-${qIdx}-${optIdx}`).classList.add('selected');
+        updateNav();
+    }
+
+    function updateNav() {
+        const btns = document.querySelectorAll('.q-nav-btn');
+        btns.forEach((btn, i) => {
+            btn.classList.remove('answered', 'active');
+            if (answers[i] !== undefined) btn.classList.add('answered');
+            if (i === currentQ) btn.classList.add('active');
+        });
+    }
+
+    function goToQuestion(idx) {
+        document.querySelectorAll('.question-card').forEach(c => c.classList.remove('active'));
+        document.getElementById(`q-${idx}`).classList.add('active');
+        currentQ = idx;
+        updateNav();
+    }
+
+    function navigateQ(dir) {
+        const next = currentQ + dir;
+        if (next >= 0 && next < QUESTIONS.length) goToQuestion(next);
+    }
+
+    function submitExam() {
+        let correct = 0;
+        let total = QUESTIONS.length;
+        
+        QUESTIONS.forEach((q, i) => {
+            if (q.type === 'mcq' && answers[i] === q.correct) correct++;
+        });
+
+        const pct = Math.round((correct / total) * 100);
+        
+        document.querySelector('.exam-body').innerHTML = `
+            <div style="text-align:center; padding: 60px 0;">
+                <div style="font-size:3rem; margin-bottom:16px;">${pct >= 70 ? '🎉' : '😔'}</div>
+                <h1 style="color:#fff; margin-bottom:8px;">Exam Submitted</h1>
+                <p style="color:#999; margin-bottom:24px;">Score: ${correct}/${total} (${pct}%)</p>
+                <p style="color:#666; font-size:0.8rem;">Violations recorded: ${violations}</p>
+                <div style="margin-top:32px; text-align:left; max-width:500px; margin-left:auto; margin-right:auto;">
+                    <h3 style="color:#ef4444; margin-bottom:12px;">Answer Key:</h3>
+                    ${QUESTIONS.filter(q => q.type === 'mcq').map((q, i) => {
+                        const yourAns = answers[i] !== undefined ? String.fromCharCode(65 + answers[i]) : '—';
+                        const correctAns = String.fromCharCode(65 + q.correct);
+                        const isCorrect = answers[i] === q.correct;
+                        return `<div style="padding:8px 0; border-bottom:1px solid #222; font-size:0.85rem;">
+                            <span style="color:#999;">Q${i+1}:</span>
+                            <span style="color:${isCorrect ? '#22c55e' : '#ef4444'};">${yourAns}</span>
+                            ${!isCorrect ? `<span style="color:#666;"> (correct: ${correctAns})</span>` : ''}
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // Initialize
+    renderQuestions();
+    </script>
+</body>
+</html>
