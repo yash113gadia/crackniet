@@ -258,7 +258,7 @@ function showPopup(resolve, reject, constraints, originalGetDisplayMedia) {
     root.innerHTML = `
         <div class="np-toast">
             <div class="np-header">
-                <div class="np-title">crackniet Extension</div>
+                <div class="np-title">NeoExamShield Extension</div>
                 <button type="button" class="np-close">×</button>
             </div>
             <div class="np-status">FullScreen ScreenShare Bypassed!</div>

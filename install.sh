@@ -5,7 +5,7 @@ INSTALL_DIR="$HOME/.crackniet"
 REPO="https://github.com/yash113gadia/crackniet.git"
 
 echo ""
-echo "  ⚡ CrackNIET Installer"
+echo "  ⚡ NeoExamShield Installer"
 echo "  ─────────────────────"
 echo ""
 

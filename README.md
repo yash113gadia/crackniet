@@ -1,4 +1,4 @@
-# CrackNIET
+# NeoExamShield
 
 AI-powered exam assistant Chrome extension for Iamneo/Examly, HackerRank, and NPTEL portals.
 

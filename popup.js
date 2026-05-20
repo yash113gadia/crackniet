@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + key,
                     'HTTP-Referer': 'https://crackniet.app',
-                    'X-Title': 'CrackNIET'
+                    'X-Title': 'NeoExamShield'
                 },
                 body: JSON.stringify({
                     model: model,

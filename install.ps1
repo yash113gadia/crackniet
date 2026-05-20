@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
-Write-Host "  ⚡ CrackNIET Installer" -ForegroundColor Red
+Write-Host "  ⚡ NeoExamShield Installer" -ForegroundColor Red
 Write-Host "  ─────────────────────"
 Write-Host ""
 

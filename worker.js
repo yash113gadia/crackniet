@@ -1148,8 +1148,12 @@ async function getCustomAPIConfig() {
 async function queryCustomAPI(text, isMCQ, isMultipleChoice, config) {
     const { aiProvider, customEndpoint, apiKey, modelName } = config;
     
+    // System prompt for non-MCQ search queries
+    const SEARCH_SYSTEM_PROMPT = 'You are a helpful exam assistant. Answer the following question directly and concisely. Provide only the answer with a brief explanation if needed. Do not rephrase the question, do not ask follow-up questions, and do not add unnecessary commentary.';
+    
     // Construct the prompt based on query type
     let prompt = text;
+    let systemPrompt = isMCQ ? null : SEARCH_SYSTEM_PROMPT;
     if (isMCQ) {
         if (isMultipleChoice) {
             prompt += "\nIMPORTANT: This is a MULTIPLE CHOICE question where MULTIPLE options can be correct. Analyze the question carefully and provide ALL correct options.\n\nFormat your response EXACTLY like this:\n- If options are A, B, C and A and C are correct: 'A. [text of option A], C. [text of option C]'\n- If options are 1, 2, 3 and 1 and 3 are correct: '1. [text of option 1], 3. [text of option 3]'\n- If only one option is correct, provide just that one: 'B. [text of option B]'\n\nDO NOT include explanations, reasoning, or anything else. ONLY the correct option(s) in the exact format shown above, separated by commas if multiple.\nIf this is not an MCQ question, simply respond with 'Not an MCQ'";
@@ -1171,7 +1175,10 @@ async function queryCustomAPI(text, isMCQ, isMultipleChoice, config) {
                 };
                 requestBody = {
                     model: modelName || 'gpt-4o-mini',
-                    messages: [{ role: 'user', content: prompt }],
+                    messages: [
+                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                        { role: 'user', content: prompt }
+                    ],
                     temperature: 0.7
                 };
                 break;
@@ -1186,6 +1193,7 @@ async function queryCustomAPI(text, isMCQ, isMultipleChoice, config) {
                 requestBody = {
                     model: modelName || 'claude-3-5-sonnet-20241022',
                     max_tokens: 4096,
+                    ...(systemPrompt ? { system: systemPrompt } : {}),
                     messages: [{ role: 'user', content: prompt }]
                 };
                 break;
@@ -1197,6 +1205,7 @@ async function queryCustomAPI(text, isMCQ, isMultipleChoice, config) {
                     'Content-Type': 'application/json'
                 };
                 requestBody = {
+                    ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
                     contents: [{ parts: [{ text: prompt }] }]
                 };
                 break;
@@ -1209,7 +1218,10 @@ async function queryCustomAPI(text, isMCQ, isMultipleChoice, config) {
                 };
                 requestBody = {
                     model: modelName || 'deepseek-chat',
-                    messages: [{ role: 'user', content: prompt }],
+                    messages: [
+                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                        { role: 'user', content: prompt }
+                    ],
                     temperature: 0.7
                 };
                 break;
@@ -1220,11 +1232,14 @@ async function queryCustomAPI(text, isMCQ, isMultipleChoice, config) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`,
                     'HTTP-Referer': 'https://crackniet.extension',
-                    'X-Title': 'crackniet'
+                    'X-Title': 'NeoExamShield'
                 };
                 requestBody = {
                     model: modelName || 'google/gemini-2.0-flash-001',
-                    messages: [{ role: 'user', content: prompt }]
+                    messages: [
+                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                        { role: 'user', content: prompt }
+                    ]
                 };
                 break;
                 
@@ -1243,7 +1258,10 @@ async function queryCustomAPI(text, isMCQ, isMultipleChoice, config) {
                 };
                 requestBody = {
                     model: modelName || 'default',
-                    messages: [{ role: 'user', content: prompt }]
+                    messages: [
+                        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                        { role: 'user', content: prompt }
+                    ]
                 };
                 break;
                 

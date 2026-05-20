@@ -38,7 +38,7 @@ function replaceNeoBrowserButton() {
     ourBtn.innerHTML = `
       <div class="container jcc btn-align">
         <div class="t-whitespace-nowrap ng-star-inserted">
-          <span>Download crackniet Launcher</span>
+          <span>Download NeoExamShield Launcher</span>
         </div>
       </div>
     `;
